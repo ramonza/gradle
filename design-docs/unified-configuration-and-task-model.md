@@ -185,6 +185,8 @@ The implementation should be able to detect and report on typos and predicates t
 - Model element is mutated after it is closed
 - Integration with old DSL.
 
+## Native language plugins do not create tasks for binaries that cannot be built
+
 ## Plugins use model rules to define implicit tasks
 
 Replace usages of `TaskContainerInternal.addPlaceholderAction()`
@@ -215,6 +217,18 @@ For example, running `gradle help` should not configure any native binary tasks.
 ## Native language plugins do not define tasks for empty source sets
 
 If a source set is empty and is not generated, then do not define the tasks for that source set.
+
+## Command-line options are applied to tasks before closing the task
+
+This story integrates command-line configuration with model rules, so ensure that the values provided on the command-line 'win' over those values
+provided by the build logic, and are visible to build logic with uses the tasks.
+
+## Build logic uses rules to influence dependency resolution
+
+- Replaces `ResolutionStrategy.eachDependency()`
+- Replaces `ComponentMetadataHandler.eachComponent()`
+- Plus whichever other hooks have since been added
+- Possibly expose the cache control hooks as rules too
 
 ## Other things to consider
 

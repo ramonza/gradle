@@ -17,17 +17,24 @@
 package org.gradle.execution.commandline;
 
 import org.gradle.api.Task;
-import org.gradle.api.internal.tasks.CommandLineOptionDescriptor;
-import org.gradle.api.internal.tasks.CommandLineOptionReader;
+import org.gradle.api.internal.tasks.options.OptionDescriptor;
+import org.gradle.api.internal.tasks.options.OptionReader;
 import org.gradle.cli.CommandLineArgumentException;
 import org.gradle.cli.CommandLineParser;
 import org.gradle.cli.ParsedCommandLine;
 import org.gradle.cli.ParsedCommandLineOption;
+import org.gradle.internal.typeconversion.TypeConversionException;
 
 import java.util.Collection;
 import java.util.List;
 
 public class CommandLineTaskConfigurer {
+
+    private OptionReader optionReader;
+
+    public CommandLineTaskConfigurer(OptionReader optionReader) {
+        this.optionReader = optionReader;
+    }
 
     public List<String> configureTasks(Collection<Task> tasks, List<String> arguments) {
         assert !tasks.isEmpty();
@@ -39,13 +46,10 @@ public class CommandLineTaskConfigurer {
 
     private List<String> configureTasksNow(Collection<Task> tasks, List<String> arguments) {
         List<String> remainingArguments = null;
-        CommandLineOptionReader commandLineOptionReader = new CommandLineOptionReader();
         for (Task task : tasks) {
-//            Map<String, JavaMethod<Object, ?>> options = new HashMap<String, JavaMethod<Object, ?>>();
             CommandLineParser parser = new CommandLineParser();
-            final List<CommandLineOptionDescriptor> commandLineOptions = commandLineOptionReader.getCommandLineOptions(task);
-
-            for (CommandLineOptionDescriptor optionDescriptor : commandLineOptions) {
+            final List<OptionDescriptor> commandLineOptions = optionReader.getOptions(task);
+            for (OptionDescriptor optionDescriptor : commandLineOptions) {
                 String optionName = optionDescriptor.getName();
                 org.gradle.cli.CommandLineOption option = parser.option(optionName);
                 option.hasDescription(optionDescriptor.getDescription());
@@ -60,13 +64,13 @@ public class CommandLineTaskConfigurer {
                 throw new TaskConfigurationException(task.getPath(), "Problem configuring task " + task.getPath() + " from command line.", e);
             }
 
-            for (CommandLineOptionDescriptor commandLineOptionDescriptor : commandLineOptions) {
+            for (OptionDescriptor commandLineOptionDescriptor : commandLineOptions) {
                 final String name = commandLineOptionDescriptor.getName();
                 if (parsed.hasOption(name)) {
                     ParsedCommandLineOption o = parsed.option(name);
                     try {
                         commandLineOptionDescriptor.apply(task, o.getValues());
-                    } catch (Exception ex) {
+                    } catch (TypeConversionException ex) {
                         throw new TaskConfigurationException(task.getPath(),
                                 String.format("Problem configuring option '%s' on task '%s' from command line.", name, task.getPath()), ex);
                     }

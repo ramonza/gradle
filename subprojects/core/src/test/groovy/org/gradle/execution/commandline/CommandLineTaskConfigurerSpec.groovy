@@ -17,16 +17,18 @@ package org.gradle.execution.commandline
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
-import org.gradle.api.internal.tasks.CommandLineOption
+import org.gradle.api.internal.tasks.options.Option
+import org.gradle.api.internal.tasks.options.OptionReader
 import org.gradle.api.tasks.TaskAction
 import org.gradle.execution.TaskSelector
+import org.gradle.internal.typeconversion.TypeConversionException
 import org.gradle.testfixtures.ProjectBuilder
 import spock.lang.Specification
 
 class CommandLineTaskConfigurerSpec extends Specification {
 
     Project project = new ProjectBuilder().build()
-    CommandLineTaskConfigurer configurer = new CommandLineTaskConfigurer()
+    CommandLineTaskConfigurer configurer = new CommandLineTaskConfigurer(new OptionReader());
 
     TaskSelector selector = Mock()
     SomeTask task = project.task('someTask', type: SomeTask)
@@ -47,7 +49,7 @@ class CommandLineTaskConfigurerSpec extends Specification {
     }
 
     def "does not attempt configure if no options"() {
-        configurer = Spy(CommandLineTaskConfigurer)
+        configurer = Spy(CommandLineTaskConfigurer, constructorArgs: [new OptionReader()])
 
         when:
         def out = configurer.configureTasks([task, task2], ['foo'])
@@ -83,7 +85,9 @@ class CommandLineTaskConfigurerSpec extends Specification {
         then:
         def e = thrown(TaskConfigurationException)
         e.message == "Problem configuring option 'someEnum' on task ':someTask' from command line."
-        e.cause.message == "No enum constant org.gradle.execution.commandline.CommandLineTaskConfigurerSpec.TestEnum.unsupportedEnumValue"
+        e.cause instanceof TypeConversionException
+        e.cause.message == "Cannot coerce string value 'unsupportedEnumValue' to an enum value of type 'org.gradle.execution.commandline.CommandLineTaskConfigurerSpec\$TestEnum' (valid case insensitive values: [value1, value2])"
+
     }
 
     def "configures options on all types that can accommodate the setting"() {
@@ -163,33 +167,33 @@ class CommandLineTaskConfigurerSpec extends Specification {
     public static class SomeTask extends DefaultTask {
         String content = 'default content'
 
-        @CommandLineOption(options = "content", description = "Some content.")
+        @Option(option = "content", description = "Some content.")
         public void setContent(String content) {
             this.content = content
         }
 
         boolean someFlag = false
 
-        @CommandLineOption(options = "someFlag", description = "Some flag.")
+        @Option(option = "someFlag", description = "Some flag.")
         public void setSomeFlag(boolean someFlag) {
             this.someFlag = someFlag
         }
 
         Boolean someFlag2 = false
 
-        @CommandLineOption(options = "someFlag2", description = "Some 2nd flag.")
+        @Option(option = "someFlag2", description = "Some 2nd flag.")
         public void setSomeFlag2(Boolean someFlag2) {
             this.someFlag2 = someFlag2
         }
 
-        @CommandLineOption(options = "notUsed", description = "Not used.")
+        @Option(option = "notUsed", description = "Not used.")
         public void setNotUsed(boolean notUsed) {
             throw new RuntimeException("Not used");
         }
 
         TestEnum anEnum
 
-        @CommandLineOption(options = "someEnum", description = "some enum value.")
+        @Option(option = "someEnum", description = "some enum value.")
         public void setEnum(TestEnum anEnum) {
             this.anEnum = anEnum;
         }
@@ -202,12 +206,12 @@ class CommandLineTaskConfigurerSpec extends Specification {
         boolean someFlag = false
         String stuff
 
-        @CommandLineOption(options = "someFlag", description = "Some flag.")
+        @Option(option = "someFlag", description = "Some flag.")
         public void setSomeFlag(boolean someFlag) {
             this.someFlag = someFlag
         }
 
-        @CommandLineOption(options = "stuff", description = "Some stuff.")
+        @Option(option = "stuff", description = "Some stuff.")
         public void setStuff(String stuff) {
             this.stuff = stuff;
         }

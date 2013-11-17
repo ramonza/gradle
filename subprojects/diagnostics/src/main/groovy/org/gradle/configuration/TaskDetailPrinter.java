@@ -22,39 +22,39 @@ import org.gradle.api.DefaultTask;
 import org.gradle.api.Task;
 import org.gradle.api.Transformer;
 import org.gradle.api.internal.plugins.DslObject;
-import org.gradle.api.internal.tasks.CommandLineOptionDescriptor;
-import org.gradle.api.internal.tasks.CommandLineOptionReader;
+import org.gradle.api.internal.tasks.options.OptionDescriptor;
+import org.gradle.api.internal.tasks.options.OptionReader;
 import org.gradle.api.specs.Spec;
 import org.gradle.execution.TaskSelector;
 import org.gradle.logging.StyledTextOutput;
 import org.gradle.logging.internal.LinePrefixingStyledTextOutput;
-import org.gradle.util.CollectionUtils;
 
 import java.util.*;
 
 import static org.gradle.logging.StyledTextOutput.Style.UserInput;
+import static org.gradle.util.CollectionUtils.*;
 
 public class TaskDetailPrinter {
     private final String taskPath;
     private final TaskSelector.TaskSelection selection;
     private static final String INDENT = "     ";
-    private final CommandLineOptionReader commandLineOptionReader;
+    private final OptionReader optionReader;
 
-    public TaskDetailPrinter(String taskPath, TaskSelector.TaskSelection selection) {
+    public TaskDetailPrinter(String taskPath, TaskSelector.TaskSelection selection, OptionReader optionReader) {
         this.taskPath = taskPath;
         this.selection = selection;
-        commandLineOptionReader = new CommandLineOptionReader();
+        this.optionReader = optionReader;
     }
 
     public void print(StyledTextOutput output) {
-        final List<Task> tasks = CollectionUtils.sort(selection.getTasks());
+        final List<Task> tasks = sort(selection.getTasks());
 
         output.text("Detailed task information for ").withStyle(UserInput).println(taskPath);
         final ListMultimap<Class, Task> classListMap = groupTasksByType(tasks);
 
         final Set<Class> classes = classListMap.keySet();
         boolean multipleClasses = classes.size() > 1;
-        final List<Class> sortedClasses = CollectionUtils.sort(classes, new Comparator<Class>() {
+        final List<Class> sortedClasses = sort(classes, new Comparator<Class>() {
             public int compare(Class o1, Class o2) {
                 return o1.getSimpleName().compareTo(o2.getSimpleName());
             }
@@ -73,7 +73,7 @@ public class TaskDetailPrinter {
             typeOutput.withStyle(UserInput).text(clazz.getSimpleName());
             typeOutput.println(String.format(" (%s)", clazz.getName()));
 
-            printlnCommandlineOptions(output, clazz);
+            printlnCommandlineOptions(output, tasksByType);
 
             output.println();
             printTaskDescription(output, tasksByType);
@@ -90,7 +90,7 @@ public class TaskDetailPrinter {
                 return o1.getSimpleName().compareTo(o2.getSimpleName());
             }
         });
-        taskTypes.addAll(CollectionUtils.collect(tasks, new Transformer<Class, Task>() {
+        taskTypes.addAll(collect(tasks, new Transformer<Class, Task>() {
             public Class transform(Task original) {
                 return getDeclaredTaskType(original);
             }
@@ -98,7 +98,7 @@ public class TaskDetailPrinter {
 
         ListMultimap<Class, Task> tasksGroupedByType = ArrayListMultimap.create();
         for (final Class taskType : taskTypes) {
-            tasksGroupedByType.putAll(taskType, CollectionUtils.filter(tasks, new Spec<Task>() {
+            tasksGroupedByType.putAll(taskType, filter(tasks, new Spec<Task>() {
                 public boolean isSatisfiedBy(Task element) {
                     return getDeclaredTaskType(element).equals(taskType);
                 }
@@ -132,36 +132,55 @@ public class TaskDetailPrinter {
         }
     }
 
-    private void printlnCommandlineOptions(StyledTextOutput output, Class clazz) {
-        final List<CommandLineOptionDescriptor> commandLineOptions = commandLineOptionReader.getCommandLineOptions(clazz);
-        if (!commandLineOptions.isEmpty()) {
+    private void printlnCommandlineOptions(StyledTextOutput output, List<Task> tasks) {
+        List<OptionDescriptor> allOptions = new ArrayList<OptionDescriptor>();
+        for (Task task : tasks) {
+            allOptions.addAll(optionReader.getOptions(task));
+        }
+        if (!allOptions.isEmpty()) {
             output.println();
             output.text("Options").println();
         }
-        final Iterator<CommandLineOptionDescriptor> optionsIterator = commandLineOptions.iterator();
-        while (optionsIterator.hasNext()) {
-            final CommandLineOptionDescriptor descriptor = optionsIterator.next();
-            final String optionString = String.format("--%s", descriptor.getOption().options()[0]);
+        final ListMultimap<String, OptionDescriptor> optionsByName = groupDescriptorsByName(allOptions);
+        Iterator<String> optionNames = sort(optionsByName.asMap().keySet()).iterator();
+        while (optionNames.hasNext()) {
+            final String currentOption = optionNames.next();
+            final List<OptionDescriptor> descriptorsForCurrentName = optionsByName.get(currentOption);
+
+            final String optionString = String.format("--%s", currentOption);
             output.text(INDENT).withStyle(UserInput).text(optionString);
-            output.text(INDENT).text(descriptor.getOption().description());
-            final List<String> availableValues = descriptor.getAvailableValues();
+
+            final List<String> availableValues = withoutDuplicates(flattenToList(String.class, collect(descriptorsForCurrentName, new Transformer<List<String>, OptionDescriptor>() {
+                public List<String> transform(OptionDescriptor original) {
+                    return original.getAvailableValues();
+                }
+            })));
+            //description does not differ between task objects, grab first one
+            output.text(INDENT).text(descriptorsForCurrentName.iterator().next().getDescription());
             if (!availableValues.isEmpty()) {
-                //indentForOptionDescription
                 final int optionDescriptionOffset = 2 * INDENT.length() + optionString.length();
                 final LinePrefixingStyledTextOutput prefixedOutput = createIndentedOutput(output, optionDescriptionOffset);
                 prefixedOutput.println();
                 prefixedOutput.println("Available values are:");
-                for (String value : availableValues) {
+                for (String value : sort(availableValues)) {
                     prefixedOutput.text(INDENT);
                     prefixedOutput.withStyle(UserInput).println(value);
                 }
             } else {
                 output.println();
             }
-            if (optionsIterator.hasNext()) {
+            if (optionNames.hasNext()) {
                 output.println();
             }
         }
+    }
+
+    private ListMultimap<String, OptionDescriptor> groupDescriptorsByName(List<OptionDescriptor> allOptions) {
+        ListMultimap<String, OptionDescriptor> optionsGroupedByName = ArrayListMultimap.create();
+        for (final OptionDescriptor option : allOptions) {
+            optionsGroupedByName.put(option.getName(), option);
+        }
+        return optionsGroupedByName;
     }
 
     private LinePrefixingStyledTextOutput createIndentedOutput(StyledTextOutput output, int offset) {
@@ -173,8 +192,8 @@ public class TaskDetailPrinter {
     }
 
     private int differentDescriptions(List<Task> tasks) {
-        return CollectionUtils.toSet(
-                CollectionUtils.collect(tasks, new Transformer<String, Task>() {
+        return toSet(
+                collect(tasks, new Transformer<String, Task>() {
                     public String transform(Task original) {
                         return original.getDescription();
                     }

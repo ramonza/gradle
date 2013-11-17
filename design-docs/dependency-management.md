@@ -99,6 +99,11 @@ This will allow a consumer to extract the external and project components as fol
         - `publishedAs` == `id`.
         - `getId(ModuleComponentIdentifier) == id`
         - `getId(BuildComponentIdentifier) == null`
+- Ensure there is coverage for the dependency report and the dependency HTML report where
+    - There are project dependencies in the graph
+- Ensure there is coverage for the dependency insight report where:
+    - There are project dependencies in the graph
+    - There are project dependencies in the graph and the `--dependency` option is used.
 
 ### Open issues
 
@@ -273,5 +278,11 @@ TBD
 ## Story: declarative substitution of group, module and version
 
 Allow some substitutions to be expressed declaratively, rather than imperatively as a rule.
+
+## Feature: Expose APIs for additional questions that can be asked about components
+
+- List versions of a component
+- Get meta-data of a component
+- Get certain artifacts of a component. Includes meta-data artifacts
 
 # Open issues

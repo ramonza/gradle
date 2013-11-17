@@ -30,16 +30,10 @@ import java.io.File;
 import java.util.Collections;
 import java.util.Set;
 
-public class DefaultSharedLibraryBinary extends DefaultNativeBinary implements SharedLibraryBinary {
-    private final Library library;
+public class DefaultSharedLibraryBinary extends DefaultLibraryBinary implements SharedLibraryBinary {
 
     public DefaultSharedLibraryBinary(Library library, Flavor flavor, ToolChainInternal toolChain, Platform platform, BuildType buildType, DefaultBinaryNamingScheme namingScheme) {
         super(library, flavor, toolChain, platform, buildType, namingScheme.withTypeString("SharedLibrary"));
-        this.library = library;
-    }
-
-    public Library getComponent() {
-        return library;
     }
 
     public String getOutputFileName() {
@@ -49,7 +43,7 @@ public class DefaultSharedLibraryBinary extends DefaultNativeBinary implements S
     public NativeDependencySet resolve() {
         return new NativeDependencySet() {
             public FileCollection getIncludeRoots() {
-                return library.getHeaders();
+                return getHeaderDirs();
             }
 
             public FileCollection getLinkFiles() {
@@ -64,11 +58,24 @@ public class DefaultSharedLibraryBinary extends DefaultNativeBinary implements S
 
     private class SharedLibraryLinkOutputs implements MinimalFileSet, Buildable {
         public Set<File> getFiles() {
-            if (hasExportedSymbols()) {
-                String sharedLibraryLinkFileName = getToolChain().getSharedLibraryLinkFileName(getOutputFile().getPath());
-                return Collections.singleton(new File(sharedLibraryLinkFileName));
+            if (isResourceOnly()) {
+                return Collections.emptySet();
             }
-            return Collections.emptySet();
+            String sharedLibraryLinkFileName = getToolChain().getSharedLibraryLinkFileName(getOutputFile().getPath());
+            return Collections.singleton(new File(sharedLibraryLinkFileName));
+        }
+
+        private boolean isResourceOnly() {
+            return hasResources() && !hasExportedSymbols();
+        }
+
+        private boolean hasResources() {
+            for (WindowsResourceSet windowsResourceSet : getSource().withType(WindowsResourceSet.class)) {
+                if (windowsResourceSet.getSource().getFiles().size() > 0) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private boolean hasExportedSymbols() {

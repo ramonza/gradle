@@ -22,18 +22,19 @@ import spock.lang.Ignore
 class TaskCommandLineConfigurationIntegrationSpec extends AbstractIntegrationSpec {
 
     final String someConfigurableTaskType = """
-    import org.gradle.api.internal.tasks.CommandLineOption
+    import org.gradle.api.internal.tasks.options.Option
 
     class SomeTask extends DefaultTask {
         boolean first
         String second
+        TestEnum third
 
-        @CommandLineOption(options = "first", description = "configures 'first' field")
+        @Option(option = "first", description = "configures 'first' field")
         void setFirst(boolean first) {
             this.first = first
         }
 
-        @CommandLineOption(options = "second", description = "configures 'second' field")
+        @Option(option = "second", description = "configures 'second' field")
         void setSecond(String second) {
             this.second = second
         }
@@ -43,11 +44,24 @@ class TaskCommandLineConfigurationIntegrationSpec extends AbstractIntegrationSpe
             this.second = second.toString()
         }
 
+        @Option(option = "third", description = "configures 'third' field")
+        void setThird(TestEnum blubb) {
+            this.third = blubb
+        }
+
         @TaskAction
         void renderFields() {
-            println "first=" + first + ",second=" + second
+            println "first=" + first + ",second=" + second + ",third=" + third
         }
-    }"""
+
+
+        enum TestEnum {
+            valid1, valid2, valid3
+        }
+    }
+
+
+    """
 
     def "can configure task from command line in multiple projects"() {
         given:
@@ -233,6 +247,37 @@ class TaskCommandLineConfigurationIntegrationSpec extends AbstractIntegrationSpe
 
         then:
         failure.assertHasDescription("Incorrect command line arguments: [-l, -l]. Task options require double dash, for example: 'gradle tasks --all'.")
+    }
+
+
+    def "decent error for invalid enum value"() {
+        given:
+        file("build.gradle") << """
+            task someTask(type: SomeTask)
+            $someConfigurableTaskType
+"""
+
+        when:
+        runAndFail 'someTask', '--third', 'unsupportedValue'
+
+        then:
+        failure.assertHasDescription("Problem configuring option 'third' on task ':someTask' from command line.")
+        failure.assertHasCause("Cannot coerce string value 'unsupportedValue' to an enum value of type 'SomeTask\$TestEnum' (valid case insensitive values: [valid1, valid2, valid3])")
+    }
+
+    def "can set enum value from commandline"() {
+        given:
+        file("build.gradle") << """
+            task someTask(type: SomeTask)
+            $someConfigurableTaskType
+"""
+
+        when:
+        run 'someTask', '--third', 'valid1'
+
+        then:
+        output.contains 'third=valid1'
+        result.assertTasksExecuted(":someTask")
     }
 
     @Ignore

@@ -61,11 +61,16 @@ The following are the newly deprecated items in this Gradle release. If you have
     * `allModuleVersions(Closure)` to `allComponents(Closure)`.
 * Various interface method signatures were changed to return the new component types: `DependencyResult`, `ResolvedComponentResult`, `UnresolvedDependencyResult` and `ResolutionResult`.
 
+### Dependency resolution prefers the latest version regardless of whether it has meta-data or not
+
+TBD
+
 ## External contributions
 
 We would like to thank the following community members for making contributions to this release of Gradle.
 
 * [Christo Zietsman](https://github.com/czietsman) - added support for locating the Visual Studio 2012 tool set
+* [Andrew Oberstar](https://github.com/ajoberstar) - Fix GRADLE-2695: ClassFormatError introduced in 1.3
 
 We love getting contributions from the Gradle community. For information on contributing, please see [gradle.org/contribute](http://gradle.org/contribute).
 

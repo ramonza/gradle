@@ -1,15 +1,19 @@
-task hello(type: CustomTask)
+import org.gradle.api.internal.tasks.options.Option
+
+allprojects{
+    task hello(type: CustomTask)
+}
 
 class CustomTask extends DefaultTask {
     @TaskAction
     void doSomething() {
     }
 
-    @org.gradle.api.internal.tasks.CommandLineOption(options = "enumValue", description = "Configures an enum value in CustomTask.")
+    @Option(option = "enumValue", description = "Configures an enum value in CustomTask.")
     public void setEnumValue(TestEnum value) {
     }
 
-    @org.gradle.api.internal.tasks.CommandLineOption(options = "booleanValue", description = "Configures a boolean flag in CustomTask.")
+    @Option(option = "booleanValue", description = "Configures a boolean flag in CustomTask.")
     public void setBooleanValue(boolean value) {
     }
 }

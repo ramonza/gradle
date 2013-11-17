@@ -50,57 +50,6 @@ A native component that represents a library to be used in other native componen
 
 # Milestone 1
 
-## Story: Build a static library binary (DONE)
-
-This story introduces the concept of a static library binary that can be built for a C++ library. This will allow both shared and static variants of a particular library to be built.
-
-- Add `StaticLibraryBinary` type.
-- Add `LinkStaticLibrary` task type.
-- Change the `cpp` plugin to:
-    - Add a `StaticLibraryBinary` instance to the `binaries` container for each library added to the `libraries` container. The instance should be called
-      `${library.name}StaticLibrary`.
-    - Add a rule that adds a `CppCompile` and `LinkStaticLibrary` task for each `StaticLibraryBinary` instance added to the `binaries` container. The link task should be
-      called `${binary.name}`.
-- Change visual C++ toolchain to:
-     - Use `lib.exe` to assemble the static library.
-- Change the GCC toolchain to:
-    - Don't use other shared library flags (`-shared`) when compiling source files for a static library.
-    - Use `ar` to assemble the static library.
-- Update the user guide to reflect the fact that static libraries can be built. Include a stand-alone sample that
-  demonstrates how to build a library.
-
-### User visible changes
-
-Given:
-
-    apply plugin: `cpp-lib`
-
-Running `gradle mainStaticLibrary` will build the main static library. Running `gradle mainSharedLibrary` will build the main shared library.
-
-Given:
-
-    apply plugin: `cpp`
-    
-    cpp {
-        sourceSets {
-            main
-        }
-    }
-    
-    libraries {
-        custom {
-            sourceSets << cpp.sourceSets.main        
-        }
-    }
-
-Running `gradle customStaticLibrary customSharedLibrary` will build the static and shared binaries.
-
-### Test cases
-
-- For a build that uses the `cpp-lib` plugin, `gradle mainStaticLibrary` will produce the static library.
-- For a build that uses the `cpp` plugin and defines multiple libraries, each library can be built as both a static and shared library binary.
-- Can link a static library into an executable and install and run the resulting executable.
-
 ## Story: Allow customization of binaries before and after linking
 
 This story introduces a lifecycle task for each binary, to allow tasks to be wired into the task graph for a given binary. These tasks will be able to modify the object files or binary files before they are consumed.
@@ -234,13 +183,6 @@ This story adds support for C source files as inputs to native binaries.
 - Manually define C++ and C source sets.
 - Can build a binary from C sources with `gcc` when `g++` and `as` are not installed
 
-### Open issues
-
-- Cpp source set should include only files with a C++ extension.
-- C source set should include only files with a C extension.
-- Assembler source set should include only files with an assembler extension.
-- Don't fail if assembler/C++/C compiler is not available if they are not required.
-
 ## Story: Build a binary from assembler source files
 
 This story adds support for using assembler source files as inputs to a native binary.
@@ -356,7 +298,7 @@ project in the same build, or from a binary repository.
 - Add `NativeBinary.libraries` property of type `DomainObjectCollection<NativeDependencySet>`.
 - Change the C++ plugin to add the dependencies of each C++ source set to this collection.
 - Change the C++ plugin to wire the inputs of the binary's compile and link tasks based on the contents of the `NativeBinary.libraries` collection.
-- Add `Library.getShared()` and `getStatic()` methods which return `NativeDependencySet` imlementations for the shared and static variants of the library.
+- Add `Library.getShared()` and `getStatic()` methods which return `NativeDependencySet` implementations for the shared and static variants of the library.
 - Add `NativeBinary.lib(Object)` method which accepts anything that can be converted to a `NativeDependencySet`:
     - A `NativeBinary` is converted by calling its `getAsNativeDependencySet()` method.
     - A `NativeDependencySet` can be used as is.
@@ -397,23 +339,6 @@ Note that this story does not include support for including the transitive depen
     - In each case, remove the original binaries before running the install image.
 - A dependency on a binary overrides a dependency on the library that produced the binary.
 
-## Open issues
-
-### Language plugins
-
-- Come up with consistent naming scheme for language plugins: 'cpp', 'c', 'assembler', 'java-lang', 'scala-lang', etc
-
-### Source sets
-
-- Declare a dependency on another source set.
-- Add compile dependencies to each source set.
-- Add link dependencies to each source set, use these to infer the link dependencies of the binary.
-- AssemblerSourceSet should implement DependentSourceSet (has source dependencies)
-- Change `NativeDependencySet` to handle separate C and C++ headers.
-- Replace `SourceDirectorySet` with something that is actually a set of source directories.
-    - Use this for sources and headers
-    - Can access as a set of directories, a set of files or a file tree
-
 # Milestone 2
 
 ## Story: Simplify configuration of component source sets
@@ -430,10 +355,6 @@ are created automatically for each component.
 ### Test cases
 
 - Programmatically create the functional source set prior to adding the matching component.
-
-### Open issues
-
-- Only do this if no source sets have been explicitly attached to the component.
 
 ## Story: Build different variants of a native component
 
@@ -485,11 +406,6 @@ This will define 4 binaries:
 
 ### Open issues
 
-- Make it easy to have the same set of variants for all components.
-- Add a 'development' assemble task, which chooses a single binary for each component.
-- Need to make standard 'build', 'check' lifecycle tasks available too.
-- Formalise the concept of a naming scheme for binary names, tasks and file paths.
-- Need to be able to build a single variant or all variants.
 - Need to consume locally and between projects and between builds.
 - Need a hook to infer the default variant.
 - Need to handle dependencies.
@@ -550,18 +466,6 @@ This story adds support for building a native component using multiple tool chai
 - Reasonable error message when no tool chain is defined and default is not available.
 - Reasonable error message any defined tool chain not available.
 - Build an executable with multiple toolchains that uses a library with a single toolchain that uses a library with multiple toolchains.
-
-### Open issues
-
-- Reasonable behaviour when no tool chains are available on the current machine.
-- Need separate compiler, linker and assembler options for each toolchain.
-- Need shared compiler, linker and assembler options for all toolchains.
-- Need to consume locally and between projects and between builds.
-- Need to be able to build for a single toolchain only.
-- Easy way to detect (and use) the set of available tool chains.
-- Define a tool chain as a type and required version (eg GCC v4.+)
-    - Attempt to locate the tool chain in path (if no `path` provided)
-    - Verify the version for defined tool chain (if `path` is provided)
 
 ## Story: Build a native component for multiple architectures
 
@@ -626,23 +530,6 @@ Each variant has a platform associated with it.
     - On OS X run `otool -hv` over the object files and binaries
     - On Windows run `dumpbin` over the object files and binaries
 - Build an executable with multiple architectures that uses a library with a single architecture that uses a library with multiple architectures.
-
-### Open issues
-
-- Need to be able to build for a single architecture or all available architectures.
-- Need to discover which architectures a tool chain can build for.
-- Need to handle universal binaries.
-- Need separate compiler, linker and assembler options for each platform.
-- Infer the default platform and architecture.
-- Define some conventions for architecture names.
-    - Intel 32bit: `ia-32`, `i386`, `x86`
-    - Intel 64bit: `x86-64`, `x64` (Windows), `amd64` (BSD and Debian linux distributions, Solaris), `x86_64` (linux kernel, OS X, Fedora, GCC tools)
-    - Intel Itanium: `ia-64`
-    - PowerPC 32bit: `ppc`
-    - PowerPC 64bit: `ppc64`
-    - Sparc: ??
-    - ARM: ??
-- VisualCppToolChain should automatically switch between different executables for different target architectures.
 
 ## Story: Produce build type variants of a native component
 
@@ -714,11 +601,6 @@ specifying arguments to use with GCC when targeting a particular platform.
         }
     }
 
-### Open issues
-
-- Need to be able to build for a single platform or all available platforms.
-- Add some opt-in way to define variants using a matrix of (flavour, tool chain, architecture, operating system).
-
 ## Story: Build a native component for multiple operating systems
 
 This story adds the concept of an operating system to the platform. A tool chain may only be able to build for a particular
@@ -730,6 +612,7 @@ target operating system, an for GCC additional support may be added to target an
       windows, linux, osx and solaris.
 
 ### User visible changes
+
     targetPlatforms {
         linux_x86 {
             operatingSystem "linux"
@@ -748,11 +631,6 @@ target operating system, an for GCC additional support may be added to target an
             // Use the tool chain default operating system
         }
     }
-
-### Open issues
-
-- Different source files by platform
-- Define some conventions for operating system names.
 
 ## Story: Incremental compilation for C and C++
 
@@ -920,7 +798,7 @@ Depends on a number of stories in [dependency-resolution.md](dependency-resoluti
 - Add an `assemble` lifecycle task for each component.
 - Running `gradle assemble` should build all binaries for the main executable or library
 - Running `gradle uploadArchives` should build and publish all binaries for the main executable or library
-- Add a task for creating a single 'developerImage' for each component.
+- Add a task for creating a single 'developer image' for each component.
     - Build `debug` variant where possible
     - Build shared library variants
     - Build for the current Operating System and architecture
@@ -946,11 +824,9 @@ Depends on a number of stories in [dependency-resolution.md](dependency-resoluti
 
 ### Open issues
 
-- Add a hook to allow the generated compiler and linker command-line options to be tweaked before forking.
 - Add properties to set macros and include directories for a binary, allow these to be set as toolchain specific compiler args (ie -D and -I) as well.
 - Add properties to set system libs and lib directories for a binary, allow these to be set as toolchain specific linker args (ie -l and -L) as well.
 - Add set methods for each of these properties.
-- Split the compiler and linker settings out to separate types.
 
 ## Story: Link Windows resource files into native binaries
 
@@ -1013,6 +889,8 @@ Here's an example:
 - Include headers?
 - Don't define the compile task if the source set is empty.
 
+# Milestone 3
+
 ## Story: Generate source from Microsoft IDL files
 
 - Add a `microsoft-idl` plugin
@@ -1047,8 +925,6 @@ Here's an example:
 
 * A `.def` file lists `__stdcall` functions to export from a DLL. Can also use `__declspec(dllexport)` in source to export a function.
 * Functions are imported from a DLL using `__declspec(dllimport)`.
-
-# Milestone 3
 
 ## Story: Build binaries against a library in another project
 
@@ -1089,6 +965,35 @@ TBD
 * Allow the visual studio project file to be generated.
 * Merge with existing project file, as for IDEA and Eclipse.
 * Add hooks for customizing the generated XML.
+
+# Bugfixes
+
+## Files with identical names in C/C++ source tree are silently excluded from compilation (GRADLE-2923)
+
+### Implementation
+
+* Change C++ and C compiler implementations (GCC and VisualCpp) so that only a single sources file is compiled per execution 
+    * Create a single compiler options file to reuse for compiling all source files
+    * For each source file specify the source file name and the output file name on the command line
+* Make the generated object file include the project-relative path to the source file
+    * For a source file that is located within the project directory, use the project relative path
+    * For a source file that is located outside of the project directory, use the absolute path to the source file, appropriately escaped
+* Update `OutputCleaningCompiler` with knowledge of the new source->object file mapping
+
+If we are inspired by CMake, the output file rules would be:
+
+* For a source file found at `src/main/cpp/main.cpp`, create the object file `build/objectFiles/<component>/<sourceSet>/src/main/cpp/main.cpp.obj`
+* For a source file found at `../../src/main/cpp/main.cpp`, create the object file `build/objectFiles/<component>/<sourceSet>/C_/dev/gradle/samples/native-binaries/cpp-exe/src/main/cpp/main.cpp.obj`
+
+### Test cases
+
+* Source set includes files with the same name located within project directory
+* Source set includes files with the  files with the same name where 1 is located outside the project directory
+* Removes stale outputs when source file is moved to a different directory
+
+### Open issues
+
+* Nice way between a project directory and an absolute directory with the same path
 
 # Milestone 4
 
@@ -1179,11 +1084,11 @@ There are 2 main parts to the architecture that we are interested in: The CPU in
 but not always, a 32-bit processor instruction set is used with 32-bit data model, and a 64-bit processor instruction set is used with 64-bit
 data model.
 
-Usually, it is possible to combine different instruction sets in the same binary. So, when linking a binary targetting the amd64 CPU, it is fine to link
+Usually, it is possible to combine different instruction sets in the same binary. So, when linking a binary targeting the amd64 CPU, it is fine to link
 against a library built for the x86 CPU. It is not possible to combine different data models in the same executable.
 
 On OS X, a binary may target multiple architectures, as a universal binary. It should be noted that a universal binary simply supports more than one
-architectures, but not necessarily every architecture as the name suggests. For example, a universal binary might include x86 & amd64 suport but no
+architectures, but not necessarily every architecture as the name suggests. For example, a universal binary might include x86 & amd64 support but no
 ppc or ppc64 support.
 
 File names are important here. Generally, architecture is not encoded in the binary file name. The build must be able to distinguish between binaries
@@ -1222,7 +1127,7 @@ Native architecture names:
 A producer project compiles, links and publishes a shared library for multiple combinations of operating system and architecture. The library depends
 on zero or more shared libraries. The library is published to a repository.
 
-A consumer project compiles, links and runs an executable against the libary.
+A consumer project compiles, links and runs an executable against the library.
 
 Out of scope is cross compilation for other platforms, or building binaries for multiple versions of the same operating system.
 
@@ -1282,7 +1187,7 @@ Consumer project compiles, links and debugs an executable against this library.
 
 Implementation-wise, this problem is similar in some respects to handling multiple architectures.
 
-Usually, it is fine to link a release build of a libary into a debug binary, if the debug variant is not available. It is not fine to link a debug
+Usually, it is fine to link a release build of a library into a debug binary, if the debug variant is not available. It is not fine to link a debug
 build of a library into a release binary. On Windows, it is not ok to link a release build of a library into a debug binary.
 
 On some platforms, additional artifacts are required to debug a binary. On gcc based platforms, the debug information is linked into the binary.
@@ -1296,7 +1201,7 @@ To implement this:
 * Producer project publishes the source files for the library.
 * Include in the published meta-data, information about whether the binary is a release or debug binary.
 * Separate out debug time dependencies from runtime.
-* Consumer project selects the approprate release or debug library binraries when resolving link, execute and debug dependencies.
+* Consumer project selects the appropriate release or debug library binaries when resolving link, execute and debug dependencies.
 * Consumer project installs the pdb and source files into the appropriate locations, so the debugger can find them.
 * Allow compiler and linker settings to be specified separately for release and debug binaries.
 * Define a set of default build types (debug and release, say).
@@ -1337,14 +1242,131 @@ TBD
 
 TBD
 
+## DSL cleanups
+
+- Improve customising the tasks for building a binary
+- Improve doing stuff with the install task
+- Some way to configure/use all native components (instead of `libraries.all { ... }` and `components.all { ... }`)
+- Have some way to replace the default source sets or configure one without redefining all
+- Don't create variants that can never be built
+- Allow a plugin to define the set of available tool chains, build types, platforms, flavors etc and allow a component to declare which of these make sense.
+  Tool chain is NOT a dimension: Can infer tool chain from target platform and source dialect
+- Model language dialect and add this to source set, e.g. GCC, visual C++, ANSI C. A tool chain can compile some set of dialects.
+- Model operating system as a dependency declared by a source set.
+    - Can use this to determine which source sets to include in a given binary.
+- Model ABI as part of platform. A tool chain can produce binaries for some set of ABIs.
+- Use the term 'Visual Studio' consistently instead of 'Visual C++'
+- Test coverage for Visual studio 2012, 2013
+- Tool chain represents an installation. Must be easy to configure the discovered tool chain, and configure extra installations.
+- Improve name spacing in the DSL, so that only the current thing (or no thing) is reachable without some kind of qualification.
+
+## Source
+
+- Replace `SourceDirectorySet` with something that is actually a set of source directories.
+    - Use this for sources and headers
+    - Can access as a set of directories, a set of files or a file tree
+    - Allow individual files to be added
+    - Allow custom file extensions to be specified
+- Source sets are children of components
+- Cpp source set should include only files with a C++ extension
+- C source set should include only files with a C extension
+- Assembler source set should include only files with an assembler extension
+- A native component has a shared headers source set with its own dependencies, visible to all source sets of the component
+- A source set may have private headers and its own dependencies, visible only to the source set
+- A library component has an API, defaults to the shared headers
+- When compiling, only the API of dependencies should be visible
+- AssemblerSourceSet should implement DependentSourceSet (has source dependencies)
+- Add source sets only to a component, have some way to describe how to include/exclude a source set
+- Some conventional location for os specific source for a component
+
+## Compilation
+
+- GRADLE-2943 - Fix escaping of compiler and linker args
+- Understand and/or model -I/-L/-l/-D/-U
+- GCC tool-chain uses gcc/g++ to link and gcc to assemble
+- Source set declares a target language runtime, use this to decide which driver to use to link
+- Don't fail if g++ is not installed when it is not required
+- Support preprocessor macros for assembler
+- Understand build and release build types and drive the compiler and linker appropriately
+
+## Target platforms
+
+- Separate the model for how you select a target platform, and the details of a particular target platform.
+    - Use an alias or some kind of selector to define which target platforms to build for.
+    - Selector can select multiple target platforms
+- Define some conventions for platforms, along with some conventions for aliases/selectors and names
+- Conventional architecture names
+    - Intel 32bit: `ia-32`, `i386`, `x86`
+    - Intel 64bit: `x86-64`, `x64` (Windows), `amd64` (BSD and Debian linux distributions, Solaris), `x86_64` (linux kernel, OS X, Fedora, GCC tools)
+    - Intel Itanium: `ia-64`
+    - PowerPC 32bit: `ppc`
+    - PowerPC 64bit: `ppc64`
+    - Sparc: ??
+    - ARM: ??
+- Conventional operating system names
+- Infer the default target platform, as the current operating system and a 'standard' architecture for that operating system on the current machine.
+
+## Variants
+
+- Add linkage as a variant dimension
+- Model build type better, follow the same pattern as target platform
+- Define some conventional build types (say `release` and `debug`). Have the tool chain and dependency resolution understand these.
+- Model flavors better, follow the same pattern as other variant dimensions.
+- Need to handle universal binaries.
+    - Use `lipo` to merge two binaries into a single universal binary.
+    - Transforms the meta-data for the component - same set of variants but different set of binaries.
+
+## Toolchains
+
+- DSL to declare that a toolchain supports certain target platform, and how to invoke the tools to do so.
+
+
+    toolchains {
+        gcc {
+            platform(...) {
+                ... configure platform implementation
+                cppCompiler { compileSpec ->
+                    ... compiler compiler invocation
+                }
+            }
+        }
+        visualStudio {
+            ...
+        }
+        gcc3(Gcc) {
+            installDir = 'someWhere'
+        }
+    }
+
+## Structure
+
+- Some common plugin that determines which tool-chains to apply
+- Fix package hierarchy
+
+### Language plugins
+
+- Add a 'development' install task, which chooses a single variant for an executable to install
+- Need to make standard 'build', 'check' lifecycle tasks available too. The `assemble` task should build all buildable variants.
+    - Reasonable behaviour when nothing is buildable on the current machine.
+- Come up with consistent naming scheme for language plugins: 'cpp', 'c', 'assembler', 'java-lang', 'scala-lang', etc
+
+### Performance
+
+- Improve incremental build where the task needs to do some work to figure out the inputs.
+- Add some performance tests
+- Parallel compilation, some kind of consistency between parallel test execution, parallel task execution, etc.
+
+## Later
+
+- Better way to see how the compiler is being invoked
+- Make names less important
+
 # Open issues
 
 * Output of any custom post link task should be treated as input to anything that depends on the binary.
 * Add 'position independent' setting to 'NativeBinary'.
 * Add a position independent variant for all static libraries.
 * Model shared/static linkage as another dimension for library components.
-* Decouple SourceSet and SourceDirectorySet, and make it easy to add individual source files and directories.
-* General purpose tree artifact.
 * Handling for system libraries.
 * Building for multiple chipsets.
 * Selecting a compatible architecture at resolve time. For example, if I'm building for the amd64 cpu, I can use an x86 cpu + 64 bit data model.
@@ -1367,3 +1389,6 @@ TBD
 * Install task should generate a shell script as well as a batch script when running under cygwin.
 * GCC and Clang under cygwin target the cygwin runtime, not the windows runtime.
 * Add language level to C and C++ source sets.
+* The `gcc` provided by XCode on OS X is actually a repackaged `clang`. Should distinguish between building with the `gcc` provided by XCode, and building with a real `gcc`
+  install, eg via a ports toolkit.
+* Adding other languages as external plugins
